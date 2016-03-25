@@ -12,6 +12,7 @@ import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 import com.google.android.gms.iid.InstanceID;
 import java.io.IOException;
+
 public class GCMClientManager {
     // Constants
     public static final String TAG = "GCMClientManager";
@@ -24,10 +25,13 @@ public class GCMClientManager {
     private String regid;
     private String projectNumber;
     private Activity activity;
-    public GCMClientManager(Activity activity, String projectNumber) {
+    private GCMRegisterListner gcmRegisterListner;
+
+    public GCMClientManager(Context context, String projectNumber) {
         this.activity = activity;
         this.projectNumber = projectNumber;
         this.gcm = GoogleCloudMessaging.getInstance(activity);
+        this.gcmRegisterListner=(GCMRegisterListner)context;
     }
     /**
      * @return Application's version code from the {@code PackageManager}.
@@ -43,14 +47,14 @@ public class GCMClientManager {
         }
     }
     // Register if needed or fetch from local store
-    public void registerIfNeeded(final RegistrationCompletedHandler handler) {
+    public void registerIfNeeded() {
         if (checkPlayServices()) {
             regid = getRegistrationId(getContext());
             if (regid.isEmpty()) {
-                registerInBackground(handler);
+                registerInBackground(gcmRegisterListner);
             } else { // got id from cache
                 Log.i(TAG, regid);
-                handler.onSuccess(regid, false);
+                gcmRegisterListner.onSuccess(regid, false);
             }
         } else { // no play services
             Log.i(TAG, "No valid Google Play Services APK found.");
@@ -62,7 +66,7 @@ public class GCMClientManager {
      * Stores the registration ID and app versionCode in the application's
      * shared preferences.
      */
-    private void registerInBackground(final RegistrationCompletedHandler handler) {
+    private void registerInBackground(final GCMRegisterListner handler) {
         new AsyncTask<Void, Void, String>() {
             @Override
             protected String doInBackground(Void... params) {
@@ -163,13 +167,5 @@ public class GCMClientManager {
     private Activity getActivity() {
         return activity;
     }
-    public static abstract class RegistrationCompletedHandler {
-        public abstract void onSuccess(String registrationId, boolean isNewRegistration);
-        public void onFailure(String ex) {
-            // If there is an error, don't just keep trying to register.
-            // Require the user to click a button again, or perform
-            // exponential back-off.
-            Log.e(TAG, ex);
-        }
-    }
+
 }
